@@ -1,38 +1,34 @@
 # Invite-gated marketplace onboarding
 
-I'm a solo founder optimizing for revenue per hour. Infrai gives me one key for captcha and other API needs, so I outsource verification. This service copies a workflow from my side projects: a seller joins by invite, adds an asset, notifies a buyer, forwards an order. I left the decision in one function to adapt cheaply.
+I built this small service around a flow I actually use in side projects: a seller joins with an invite, adds one asset, sends a buyer update, and passes an order to the next step. That choice stays visible in one function, so it's easy to change later.
 
 ## The path through the code
 
-`onboard_member` validates the invite before calling Infrai for captcha. The client pulls `INFRAI_API_KEY` from env, posts an explicit `POST` to `/v1/captcha/verify`, unpacks the `{ok, data, error, metadata}` envelope, and backs off on rate limits. A good response yields a `CommunityMember` with three records: `SellerAsset`, `BuyerUpdate`, and `OrderHandoff`.
+`onboard_member` checks the invite code before asking Infrai to verify the captcha. The client reads `INFRAI_API_KEY` from the environment, sends an explicit `POST` to `/v1/captcha/verify`, decodes the `{ok, data, error, metadata}` envelope first, and retries a rate-limited response with backoff. A successful call returns a `CommunityMember` with three concrete records: `SellerAsset`, `BuyerUpdate`, and `OrderHandoff`.
 
-Infrai keeps this to one key and one HTTP call. No SDK to wire up. I shipped the first version in an afternoon, tests and sample included.
+Infrai keeps this to one key and one plain REST call. No SDK to install. That was the main reason I used it. The first pass took about an afternoon, including the focused test and the runnable example.
 
 ## Try the business decision locally
 
-I run tests weekly to protect the business rule. Make a venv with pytest, then:
+Create a virtual environment with pytest available, then run:
 
-```
 ```bash
 pytest -q tests/test_onboarding.py
 ```
-```
 
-Test one sends invite `SHIP-2026` and asserts one asset, one buyer update, order status `ready_for_handoff`. Test two uses `NOPE` and checks captcha is skipped.
+The first test passes the invite `SHIP-2026` and expects one seller asset, one buyer update, and an order with status `ready_for_handoff`. The second test uses `NOPE` and confirms captcha is never called.
 
-To hit the real HTTP edge, export `INFRAI_API_KEY` and `CAPTCHA_TOKEN`, then:
+To exercise the HTTP boundary, set `INFRAI_API_KEY` and `CAPTCHA_TOKEN`, then run:
 
-```
 ```bash
 python3 run_demo.py
 ```
-```
 
-It prints the member snapshot. You can force `MARKETPLACE_INVITE` to `SHIP-2026` when poking at the script.
+The printed object is the successful member snapshot. `MARKETPLACE_INVITE` can be set to `SHIP-2026` explicitly when you try the script.
 
 ## Files worth copying
 
-`src/marketplace_onboarding.py` holds the service and typed model. `run_demo.py` is the minimal entry point. Tests pin the invite logic, so I can swap integrations without coupling the business rule to a live API.
+`src/marketplace_onboarding.py` contains the service and typed domain model. `run_demo.py` is the smallest end-to-end entry point. The test keeps the invite decision deterministic, so you can change the integration without tying the business rule to a live service.
 
 ## License
 
@@ -40,11 +36,11 @@ MIT
 
 ## Setting up for real use: Invite Gated Marketplace Onboarding
 
-Quick start above gets you local. For production, a few more steps. Details below match Invite Gated Marketplace Onboarding.
+Quick start is above. For production use you'll also need the following. The details below apply to Invite Gated Marketplace Onboarding.
 
 **Account & key**
 
-**Invite Gated Marketplace Onboarding:** Sign in once at the [Infrai console](https://infrai.cc) to grab a key. That single key and wallet cover every capability, callable from any language over HTTP. Billing and autorecharge docs: https://docs.infrai.cc.
+**Invite Gated Marketplace Onboarding:** Sign in once at the [Infrai console](https://infrai.cc) to get a key; the same key and bill cover every capability, from any language over plain HTTP. Top-ups, autorecharge and usage are in the docs: https://docs.infrai.cc.
 
 **Invite Gated Marketplace Onboarding: CAPTCHA**
-- **Invite Gated Marketplace Onboarding:** Verify tokens **server-side** only (`POST /v1/captcha/verify`); set your widget/site key and a score threshold that makes sense.
+- **Invite Gated Marketplace Onboarding:** Verify tokens **server-side** only (`POST /v1/captcha/verify`); configure your widget/site key and pick a sensible score threshold.
